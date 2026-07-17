@@ -1,0 +1,13 @@
+subsystem: Imperative summary under ~50 chars (no trailing period)
+
+# Body: wrap at 72 columns. Explain WHY this change is needed and what it
+# does at a high level. The diff shows HOW. Reference issues/papers if useful.
+#
+# Component prefixes: raft store wal grpc proto cluster metrics k8s docker
+#                     engine dashboard ci docs cmd
+#
+# Imperative mood: "Add", "Fix", "Remove" -- not "Added"/"Fixes".
+# One logical change per commit.
+#
+# Sign off with `git commit -s` (adds the Signed-off-by line below / DCO):
+# Signed-off-by: Radu Andrei Tudorica <raduandreitudorica3@gmail.com>

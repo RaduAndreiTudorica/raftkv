@@ -1,0 +1,21 @@
+# Pre-commit hooks. Install once with: lefthook install
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -l {staged_files} && test -z "$(gofmt -l {staged_files})"
+    golangci:
+      glob: "*.go"
+      run: golangci-lint run
+    rustfmt:
+      glob: "engine/**/*.rs"
+      run: cd engine && cargo fmt --check
+    mixformat:
+      glob: "dashboard/**/*.ex*"
+      run: cd dashboard && mix format --check-formatted
+
+pre-push:
+  commands:
+    tests:
+      run: go test -race ./...

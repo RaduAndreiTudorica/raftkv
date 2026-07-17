@@ -1,0 +1,19 @@
+# Go
+/bin/
+*.out
+*.test
+coverage.*
+
+# Rust
+engine/target/
+
+# Elixir
+dashboard/_build/
+dashboard/deps/
+dashboard/*.ez
+
+# Env / editors
+.env
+.DS_Store
+.idea/
+.vscode/
