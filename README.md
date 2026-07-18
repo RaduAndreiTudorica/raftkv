@@ -5,7 +5,6 @@
 > dashboard in Elixir. Deployed on Kubernetes.
 
 [![CI](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml/badge.svg)](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/RaduAndreiTudorica/raftkv)](https://goreportcard.com/report/github.com/RaduAndreiTudorica/raftkv)
 [![License: BSD-3](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
 
 ---
