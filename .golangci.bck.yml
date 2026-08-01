@@ -1,0 +1,40 @@
+# golangci-lint configuration for raftkv
+# docs: https://golangci-lint.run/usage/configuration/
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck      # unchecked errors
+    - govet         # suspicious constructs
+    - staticcheck   # the big one: bugs, performance, style
+    - unused        # dead code
+    - ineffassign   # ineffective assignments
+    - gofmt         # formatting
+    - goimports     # import grouping/ordering
+    - misspell      # typos in comments/strings
+    - revive        # golint replacement, style rules
+    - gocritic      # opinionated diagnostics
+    - bodyclose     # unclosed HTTP response bodies
+    - errorlint     # correct error wrapping (errors.Is/As)
+    - copyloopvar   # loop variable capture bugs
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/RaduAndreiTudorica/raftkv
+  revive:
+    rules:
+      - name: exported          # exported symbols need doc comments
+      - name: error-return
+      - name: error-naming
+
+issues:
+  exclude-rules:
+    # Test files can be a bit looser.
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocritic
+  max-issues-per-linter: 0
+  max-same-issues: 0
