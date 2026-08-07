@@ -83,6 +83,12 @@ func parseCommand(command string) (string, []string, error) {
 		}
 
 		return "", nil, invalidNumberOfArgs(token, 0, len(args))
+	case "exit":
+		if len(args) == 0 {
+			return token, args, nil
+		}
+
+		return "", nil, invalidNumberOfArgs(token, 0, len(args))
 	default:
 		return "", nil, unknownCommand(token)
 	}
@@ -162,6 +168,8 @@ func cli() {
 				}
 			case "help":
 				printHelp()
+			case "exit":
+				os.Exit(0)
 			}
 		}
 
