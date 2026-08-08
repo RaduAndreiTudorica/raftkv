@@ -29,7 +29,7 @@ var sameKeyValues = []string{
 }
 
 func TestStore_Put_Get(t *testing.T) {
-	store := NewStore(t.TempDir())
+	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
 
@@ -46,7 +46,7 @@ func TestStore_Put_Get(t *testing.T) {
 }
 
 func TestStore_Get_NonExistentKey(t *testing.T) {
-	store := NewStore(t.TempDir())
+	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	_, exists := store.Get(key)
 	if exists == true {
@@ -56,7 +56,7 @@ func TestStore_Get_NonExistentKey(t *testing.T) {
 }
 
 func TestStore_Delete(t *testing.T) {
-	store := NewStore(t.TempDir())
+	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
 
@@ -77,7 +77,7 @@ func TestStore_Delete(t *testing.T) {
 }
 
 func TestStore_Delete_NonExistentKey(t *testing.T) {
-	store := NewStore(t.TempDir())
+	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 
 	err := store.Delete(key)
@@ -87,7 +87,7 @@ func TestStore_Delete_NonExistentKey(t *testing.T) {
 }
 
 func TestStore_Put_Overwrite(t *testing.T) {
-	store := NewStore(t.TempDir())
+	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
 	value2 := []byte("moon")
@@ -112,12 +112,12 @@ func TestStore_Put_Overwrite(t *testing.T) {
 func TestStore_WAL_Persistence(t *testing.T) {
 	dir := t.TempDir()
 
-	store1 := NewStore(dir)
+	store1, _ := NewStore(dir)
 	key := []byte("hello")
 	value := []byte("world")
 	store1.Put(key, value)
 
-	store2 := NewStore(dir)
+	store2, _ := NewStore(dir)
 	store2.RetrieveData()
 	valueStored, _ := store2.Get(key)
 	if string(value) != string(valueStored) {
@@ -129,7 +129,7 @@ func TestStore_WAL_Persistence(t *testing.T) {
 func TestStore_WAL_ReplayOrder(t *testing.T) {
 	dir := t.TempDir()
 
-	store1 := NewStore(dir)
+	store1, _ := NewStore(dir)
 	key := []byte("hello")
 	value := []byte("world")
 	store1.Put(key, value)
@@ -142,7 +142,7 @@ func TestStore_WAL_ReplayOrder(t *testing.T) {
 	value = []byte("sun")
 	store1.Put(key, value)
 
-	store2 := NewStore(dir)
+	store2, _ := NewStore(dir)
 	store2.RetrieveData()
 
 	valueStored, _ := store2.Get(key)
@@ -153,7 +153,7 @@ func TestStore_WAL_ReplayOrder(t *testing.T) {
 
 func TestStore_WAL_EmptyFile(t *testing.T) {
 	dir := t.TempDir()
-	store := NewStore(dir)
+	store, _ := NewStore(dir)
 
 	err := store.RetrieveData()
 	if err != nil {
@@ -164,7 +164,7 @@ func TestStore_WAL_EmptyFile(t *testing.T) {
 func TestStore_ConcurrentPuts(t *testing.T) {
 	wg := sync.WaitGroup{}
 	dir := t.TempDir()
-	store := NewStore(dir)
+	store, _ := NewStore(dir)
 
 	for _, pair := range testPairs {
 		wg.Add(1)
@@ -186,7 +186,7 @@ func TestStore_ConcurrentPuts(t *testing.T) {
 func TestStore_ConcurrentPutsSameKey(t *testing.T) {
 	wg := sync.WaitGroup{}
 	dir := t.TempDir()
-	store := NewStore(dir)
+	store, _ := NewStore(dir)
 	key := []byte("hello")
 
 	for _, value := range sameKeyValues {
