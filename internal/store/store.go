@@ -23,11 +23,23 @@ type Store struct {
 	data    map[string][]byte
 }
 
-func NewStore(walPath string) *Store {
-	return &Store{
+func NewStore(walPath string) (*Store, error) {
+	err := os.MkdirAll(walPath, 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	store := &Store{
 		walPath: walPath,
 		data:    make(map[string][]byte),
 	}
+
+	err = store.RetrieveData()
+	if err != nil {
+		return nil, err
+	}
+
+	return store, nil
 }
 
 func (store *Store) writeLog(command string, args ...[]byte) error {
@@ -41,16 +53,12 @@ func (store *Store) writeLog(command string, args ...[]byte) error {
 		return fmt.Errorf("unknown command: %s", command)
 	}
 
-	err := os.MkdirAll(store.walPath, 0755)
-	if err != nil {
-		return err
-	}
-
-	fileName := filepath.Join(store.walPath, "raftkv.wol")
+	fileName := filepath.Join(store.walPath, "raftkv.wal")
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	err = json.NewEncoder(file).Encode(message)
 	if err != nil {
@@ -61,11 +69,12 @@ func (store *Store) writeLog(command string, args ...[]byte) error {
 
 func (store *Store) readLog() ([]Message, error) {
 	var messages []Message
-	fileName := filepath.Join(store.walPath, "raftkv.wol")
+	fileName := filepath.Join(store.walPath, "raftkv.wal")
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return []Message{}, err
 	}
+	defer file.Close()
 
 	decoder := json.NewDecoder(file)
 
@@ -123,18 +132,24 @@ func (store *Store) Put(key, value []byte) error {
 }
 
 func (store *Store) Get(key []byte) ([]byte, bool) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
 	value, ok := store.data[string(key)]
 	return value, ok
 }
 
 func (store *Store) Delete(key []byte) error {
-	err := store.writeLog("delete", key)
-	if err != nil {
-		return err
-	}
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
 	_, ok := store.data[string(key)]
 	if !ok {
 		return ErrKeyNotFound
+	}
+
+	err := store.writeLog("delete", key)
+	if err != nil {
+		return err
 	}
 	delete(store.data, string(key))
 	return nil
