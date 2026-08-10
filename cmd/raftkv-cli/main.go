@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	addr   = flag.String("addr", "localhost:50051", "the address to connect to")
-	client proto.KVClient
+	addr             = flag.String("addr", "localhost:50051", "the address to connect to")
+	client           proto.KVClient
+	ErrValueNotFound = errors.New("not Found")
 )
 
 const raftBanner = " .  ~  .        ___       __ _   _  ____   __\n~  .  ~  .     | _ \\__ _ / _| |_| |/ " +
@@ -118,8 +119,11 @@ func getMessage(args []string) (string, error) {
 		return "", err
 	}
 
-	value := string(response.Value)
-	return value, nil
+	if !response.Exists {
+		return "", ErrValueNotFound
+	}
+
+	return string(response.Value), nil
 }
 
 func deleteMessage(args []string) error {
@@ -129,7 +133,7 @@ func deleteMessage(args []string) error {
 
 	_, err := client.Delete(ctx, &proto.DeleteRequest{Key: key})
 	if err != nil {
-		return err
+		return ErrValueNotFound
 	}
 
 	return nil
