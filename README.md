@@ -82,7 +82,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and workflow.
 
 ## Roadmap
 
-- [ ] Single-node KV store (gRPC + WAL)
+- [x] Single-node KV store (gRPC + WAL)
 - [ ] Docker + compose
 - [ ] Raft replication (hashicorp/raft)
 - [ ] Kubernetes deployment (StatefulSet)
