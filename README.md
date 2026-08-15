@@ -19,15 +19,15 @@ metrics, a live dashboard, and Kubernetes manifests.
 ## Architecture
 
 ```
-        ┌──────────┐   gRPC    ┌──────────┐
-client ─▶│  node A  │◀─Raft──▶│  node B  │
-        │ (leader) │          │(follower)│
-        └────┬─────┘          └────┬─────┘
-             │        Raft         │
-             │     ┌──────────┐    │
-             └────▶│  node C  │◀───┘
-                   │(follower)│
-                   └──────────┘
+         ┌──────────┐   gRPC   ┌──────────┐
+client-> │  node A  │ <-Raft-> │  node B  │
+         │ (leader) │          │(follower)│
+         └────┬─────┘          └────┬─────┘
+              │        Raft         │
+              │     ┌──────────┐    │
+              └────>│  node C  │<───┘
+                    │(follower)│
+                    └──────────┘
 
   each node = Go server (gRPC + Raft) ──▶ storage engine (Rust: WAL + LSM)
   Elixir/Phoenix LiveView dashboard subscribes to cluster state (leader, lag, up/down)
@@ -50,6 +50,15 @@ Run a 3-node cluster locally:
 docker compose up --build          # 3 nodes on ports 60000-60002
 grpcurl -plaintext localhost:60000 raftkv.KV/Put ...
 ```
+
+Run the cli client
+```bash
+cd raftkvl
+go run cmd/raftkv-cli/main.go    #the client connects on port 60000
+# or for more customization run
+go run cmd/raftkv-cli/main.go --help
+```
+
 
 Deploy on Kubernetes (kind/minikube):
 
