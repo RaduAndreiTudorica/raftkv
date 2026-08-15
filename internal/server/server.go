@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"io"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -9,6 +10,15 @@ import (
 	"github.com/RaduAndreiTudorica/raftkv/internal/store"
 	"github.com/RaduAndreiTudorica/raftkv/proto"
 )
+
+type MapStore interface {
+	Get([]byte) ([]byte, error)
+	Put([]byte, []byte) error
+	Delete([]byte) error
+	Snapshot() (io.Reader, error)
+	Restore(reader io.Reader) error
+	Close() error
+}
 
 type Server struct {
 	proto.UnimplementedKVServer
