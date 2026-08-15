@@ -27,6 +27,14 @@ func main() {
 	port := flag.String("port", "50051", "port the server listens to")
 	flag.Parse()
 
+	if os.Getenv("PORT") != "" {
+		*port = os.Getenv("PORT")
+	}
+
+	if os.Getenv("WALPATH") != "" {
+		*walPath = os.Getenv("WALPATH")
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
