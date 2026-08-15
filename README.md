@@ -47,8 +47,8 @@ client ─▶│  node A  │◀─Raft──▶│  node B  │
 Run a 3-node cluster locally:
 
 ```bash
-docker compose up --build          # 3 nodes on ports 8081-8083
-grpcurl -plaintext localhost:8081 raftkv.KV/Put ...
+docker compose up --build          # 3 nodes on ports 60000-60002
+grpcurl -plaintext localhost:60000 raftkv.KV/Put ...
 ```
 
 Deploy on Kubernetes (kind/minikube):
