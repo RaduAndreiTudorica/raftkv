@@ -1,0 +1,16 @@
+FROM golang:1.26 AS builder
+
+WORKDIR /app
+
+COPY go.sum go.mod ./
+RUN go mod download
+
+COPY ./ ./
+
+RUN CGO_ENABLED=0 go build -o /raftkv-cli ./cmd/raftkv-cli
+
+FROM alpine
+COPY --from=builder /raftkv-cli /raftkv-cli
+
+ENTRYPOINT ["/raftkv-cli"]
+CMD ["--addr", "host.docker.internal:60000"]
