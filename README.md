@@ -54,7 +54,7 @@ grpcurl -plaintext localhost:60000 raftkv.KV/Put ...
 Run the cli client
 ```bash
 # the client will use the port 60000
-cd raftkvl
+cd raftkv
 docker build -f Dockerfile.cli -t raftkv-cli .
 docker run -it raftkv.cli
 ```
