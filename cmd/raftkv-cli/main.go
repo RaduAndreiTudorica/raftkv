@@ -20,7 +20,7 @@ import (
 var (
 	addr             = flag.String("addr", "localhost:60000", "the address to connect to")
 	client           proto.KVClient
-	ErrValueNotFound = errors.New("not Found")
+	ErrValueNotFound = errors.New("not found")
 )
 
 const raftBanner = " .  ~  .        ___       __ _   _  ____   __\n~  .  ~  .     | _ \\__ _ / _| |_| |/ " +
