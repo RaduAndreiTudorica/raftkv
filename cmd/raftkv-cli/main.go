@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	addr             = flag.String("addr", "localhost:60002", "the address to connect to")
+	addr             = flag.String("addr", "localhost:60000", "the address to connect to")
 	client           proto.KVClient
 	ErrValueNotFound = errors.New("not found")
 )

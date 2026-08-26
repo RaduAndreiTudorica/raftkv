@@ -19,15 +19,15 @@ metrics, a live dashboard, and Kubernetes manifests.
 ## Architecture
 
 ```
-        ┌──────────┐   gRPC    ┌──────────┐
-client ─▶│  node A  │◀─Raft──▶│  node B  │
-        │ (leader) │          │(follower)│
-        └────┬─────┘          └────┬─────┘
-             │        Raft         │
-             │     ┌──────────┐    │
-             └────▶│  node C  │◀───┘
-                   │(follower)│
-                   └──────────┘
+         ┌──────────┐   gRPC   ┌──────────┐
+client-> │  node A  │ <-Raft-> │  node B  │
+         │ (leader) │          │(follower)│
+         └────┬─────┘          └────┬─────┘
+              │        Raft         │
+              │     ┌──────────┐    │
+              └────>│  node C  │<───┘
+                    │(follower)│
+                    └──────────┘
 
   each node = Go server (gRPC + Raft) ──▶ storage engine (Rust: WAL + LSM)
   Elixir/Phoenix LiveView dashboard subscribes to cluster state (leader, lag, up/down)
@@ -47,9 +47,18 @@ client ─▶│  node A  │◀─Raft──▶│  node B  │
 Run a 3-node cluster locally:
 
 ```bash
-docker compose up --build          # 3 nodes on ports 8081-8083
-grpcurl -plaintext localhost:8081 raftkv.KV/Put ...
+docker compose up --build          # 3 nodes on ports 60000-60002
+grpcurl -plaintext localhost:60000 raftkv.KV/Put ...
 ```
+
+Run the cli client
+```bash
+# the client will use the port 60000
+cd raftkv
+docker build -f Dockerfile.cli -t raftkv-cli .
+docker run -it raftkv.cli
+```
+
 
 Deploy on Kubernetes (kind/minikube):
 
@@ -83,7 +92,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and workflow.
 ## Roadmap
 
 - [x] Single-node KV store (gRPC + WAL)
-- [ ] Docker + compose
+- [x] Docker + compose
 - [ ] Raft replication (hashicorp/raft)
 - [ ] Kubernetes deployment (StatefulSet)
 - [ ] Prometheus + Grafana observability

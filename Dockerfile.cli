@@ -12,5 +12,5 @@ RUN CGO_ENABLED=0 go build -o /raftkv-cli ./cmd/raftkv-cli
 FROM alpine
 COPY --from=builder /raftkv-cli /raftkv-cli
 
-ENTRYPOINT ["/raftkv-cli"]
-CMD ["--addr", "host.docker.internal:60000"]
+EXPOSE 60000
+CMD ["/raftkv-cli", "--addr", "host.docker.internal:60000"]
