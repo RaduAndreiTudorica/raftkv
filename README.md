@@ -56,7 +56,7 @@ Run the cli client
 # the client will use the port 60000
 cd raftkv
 docker build -f Dockerfile.cli -t raftkv-cli .
-docker run -it raftkv.cli
+docker run -it --add-host=host.docker.internal:host-gateway raftkv-cli --addr host.docker.internal:60000
 ```
 
 
