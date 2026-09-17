@@ -18,19 +18,33 @@ const (
 type Raft struct {
 	proto.UnimplementedRaftServer
 
-	mutex           sync.Mutex
+	mutex sync.Mutex
+
+	// Node metadata & identity
+	Me   int
+	Role string
+
+	// Persistent state on all servers
+	CurrentTerm int64
+	VotedFor    int
+	Log         []*proto.LogEntry
+
+	// Snapshotting & compaction window
+	LastIncludedIndex int64
+	LastIncludedTerm  int64
+
+	// Volatile state on all servers
+	CommitIndex int64
+	LastApplied int64
+
+	// Network connectivity & election timers
 	Peers           []proto.RaftClient
-	Me              int
-	Role            string
-	CurrentTerm     int64
-	VotedFor        int
 	LastMessage     time.Time
-	CommitIndex     int
-	LastApplied     int
-	NextIndex       []int
-	MatchIndex      []int
 	ElectionTimeout time.Duration
-	Log             []proto.LogEntry
+
+	// Volatile state on leaders
+	NextIndex  []int64
+	MatchIndex []int64
 }
 
 type State struct {
@@ -50,7 +64,9 @@ func NewRaft(me int, peers []proto.RaftClient) *Raft {
 		LastApplied:     0,
 		NextIndex:       nil,
 		MatchIndex:      nil,
-		ElectionTimeout: time.Duration(100) * time.Millisecond,
+		LastMessage:     time.Now(),
+		Log:             []*proto.LogEntry{{Index: 0, Term: 0}},
+		ElectionTimeout: time.Duration(150+rand.Intn(150)) * time.Millisecond,
 	}
 }
 
@@ -69,7 +85,7 @@ func (rf *Raft) GetState() State {
 
 func (rf *Raft) lastLog() (int64, int64) {
 	if len(rf.Log) == 0 {
-		return 0, 0
+		return rf.LastIncludedIndex, rf.LastIncludedTerm
 	}
 	lastIdx := len(rf.Log) - 1
 	return rf.Log[lastIdx].Index, rf.Log[lastIdx].Term
@@ -139,6 +155,7 @@ func (rf *Raft) startElection() {
 	voteArgs := rf.makeRequestVote()
 	peers := rf.Peers
 	me := rf.Me
+	rf.VotedFor = rf.Me
 	rf.mutex.Unlock()
 
 	votes := 1
@@ -178,10 +195,29 @@ func (rf *Raft) startElection() {
 				gotQuorum := votes > len(peers)/2
 				voteMu.Unlock()
 
-				if gotQuorum && rf.Role == Candidate {
-					rf.Role = Leader
-					go rf.heartBeat()
+				if gotQuorum {
+
+					shouldHeartbeat := false
+					rf.mutex.Lock()
+					if rf.Role == Candidate && rf.CurrentTerm == voteArgs.Term {
+						rf.Role = Leader
+						shouldHeartbeat = true
+
+						lastIdx, _ := rf.lastLog()
+						rf.NextIndex = make([]int64, len(rf.Peers))
+						rf.MatchIndex = make([]int64, len(rf.Peers))
+						for i := range rf.Peers {
+							rf.NextIndex[i] = lastIdx + 1
+							rf.MatchIndex[i] = 0
+						}
+					}
+					rf.mutex.Unlock()
+
+					if shouldHeartbeat {
+						go rf.heartBeat()
+					}
 				}
+
 			}
 		}(peer)
 	}
@@ -190,23 +226,146 @@ func (rf *Raft) startElection() {
 func (rf *Raft) ticker() {
 	for {
 		rf.mutex.Lock()
-		if rf.Role != Leader && time.Since(rf.LastMessage) > rf.ElectionTimeout {
-			rf.mutex.Unlock()
-			rf.startElection()
-		} else if rf.Role == Leader && time.Since(rf.LastMessage) > 100*time.Millisecond {
-			rf.mutex.Unlock()
-			go rf.heartBeat()
-		} else {
-			rf.mutex.Unlock()
+
+		switch rf.Role {
+		case Leader:
+			if time.Since(rf.LastMessage) > 100*time.Millisecond {
+				go rf.heartBeat()
+			} else {
+				rf.mutex.Unlock()
+			}
+		default:
+			if time.Since(rf.LastMessage) > rf.ElectionTimeout {
+				rf.mutex.Unlock()
+				rf.startElection()
+			} else {
+				rf.mutex.Unlock()
+			}
 		}
+
 		time.Sleep(50 * time.Millisecond)
 	}
 }
 
-func (rf *Raft) RequestVote(ctx context.Context, request *proto.RequestVoteArgs) (*proto.RequestVoteReply, error) {
-	return nil, nil
+func (rf *Raft) RequestVote(ctx context.Context, args *proto.RequestVoteArgs) (*proto.RequestVoteReply, error) {
+	rf.mutex.Lock()
+	defer rf.mutex.Unlock()
+
+	if args.Term < rf.CurrentTerm {
+		return &proto.RequestVoteReply{
+			Term:        rf.CurrentTerm,
+			VoteGranted: false,
+		}, nil
+	}
+
+	if args.Term > rf.CurrentTerm {
+		rf.Role = Follower
+		rf.VotedFor = -1
+		rf.CurrentTerm = args.Term
+	}
+
+	if rf.VotedFor != -1 && rf.VotedFor != int(args.CandidateId) {
+		return &proto.RequestVoteReply{
+			Term:        rf.CurrentTerm,
+			VoteGranted: false,
+		}, nil
+	}
+
+	lastLogIndex, lastLogTerm := rf.lastLog()
+
+	if args.LastLogTerm < int64(lastLogTerm) {
+		return &proto.RequestVoteReply{
+			Term:        rf.CurrentTerm,
+			VoteGranted: false,
+		}, nil
+	}
+
+	if args.LastLogTerm == int64(lastLogTerm) && args.LastLogIndex < int64(lastLogIndex) {
+		return &proto.RequestVoteReply{
+			Term:        rf.CurrentTerm,
+			VoteGranted: false,
+		}, nil
+	}
+
+	rf.LastMessage = time.Now()
+	rf.VotedFor = int(args.CandidateId)
+
+	// write in a file in case of a crash
+
+	return &proto.RequestVoteReply{
+		Term:        rf.CurrentTerm,
+		VoteGranted: true,
+	}, nil
 }
 
-func (rf *Raft) AppendEntries(ctx context.Context, append *proto.AppendEntriesArgs) (*proto.AppendEntriesReply, error) {
-	return nil, nil
+func (rf *Raft) getEntryTerm(idx int) int64 {
+	globalIndex := int64(idx) - rf.LastIncludedIndex
+
+	if globalIndex >= 0 && globalIndex < int64(len(rf.Log)) {
+		return rf.Log[globalIndex].Term
+	} else {
+		return -1
+	}
+}
+
+func (rf *Raft) AppendEntries(ctx context.Context, args *proto.AppendEntriesArgs) (*proto.AppendEntriesReply, error) {
+	rf.mutex.Lock()
+	defer rf.mutex.Unlock()
+	if args.Term < rf.CurrentTerm {
+		return &proto.AppendEntriesReply{
+			Term:    rf.CurrentTerm,
+			Success: false,
+		}, nil
+	}
+
+	lastLogIndex, _ := rf.lastLog()
+	if lastLogIndex < args.PrevLogIndex {
+		return &proto.AppendEntriesReply{
+			Term:          rf.CurrentTerm,
+			Success:       false,
+			ConflictIndex: lastLogIndex + 1,
+			ConflictTerm:  0,
+		}, nil
+	}
+
+	entryTerm := rf.getEntryTerm(int(args.PrevLogIndex))
+	if entryTerm != args.PrevLogTerm {
+		conflictIdx := args.PrevLogIndex
+		for conflictIdx > rf.LastIncludedIndex && rf.getEntryTerm(int(conflictIdx)-1) == entryTerm {
+			conflictIdx--
+		}
+		return &proto.AppendEntriesReply{
+			Term:          rf.CurrentTerm,
+			Success:       false,
+			ConflictTerm:  entryTerm,
+			ConflictIndex: conflictIdx,
+		}, nil
+	}
+
+	for i, entry := range args.Entries {
+		entryIndex := args.PrevLogIndex + 1 + int64(i)
+		lastLogIdx, _ := rf.lastLog()
+
+		if entryIndex <= lastLogIdx {
+			if rf.getEntryTerm(int(entryIndex)) != args.PrevLogTerm {
+				sliceIndex := entryIndex - rf.LastIncludedIndex
+				rf.Log = rf.Log[:sliceIndex]
+
+				rf.Log = append(rf.Log, args.Entries[i:]...)
+
+				break
+			}
+		} else {
+			rf.Log = append(rf.Log, entry)
+		}
+	}
+
+	if args.LeaderCommit > rf.CommitIndex {
+		lastIndex, _ := rf.lastLog()
+		rf.CommitIndex = min(lastIndex, args.LeaderCommit)
+	}
+
+	return &proto.AppendEntriesReply{
+		Success: true,
+	}, nil
 }
