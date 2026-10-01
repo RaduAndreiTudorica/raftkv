@@ -353,6 +353,82 @@ func (x *AppendEntriesReply) GetConflictTerm() int64 {
 	return 0
 }
 
+type RaftState struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	CurrentTerm       int64                  `protobuf:"varint,1,opt,name=currentTerm,proto3" json:"currentTerm,omitempty"`
+	VotedFor          int64                  `protobuf:"varint,2,opt,name=votedFor,proto3" json:"votedFor,omitempty"`
+	LastIncludedIndex int64                  `protobuf:"varint,3,opt,name=lastIncludedIndex,proto3" json:"lastIncludedIndex,omitempty"`
+	LastIncludedTerm  int64                  `protobuf:"varint,4,opt,name=lastIncludedTerm,proto3" json:"lastIncludedTerm,omitempty"`
+	Entries           []*LogEntry            `protobuf:"bytes,5,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *RaftState) Reset() {
+	*x = RaftState{}
+	mi := &file_proto_raft_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RaftState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RaftState) ProtoMessage() {}
+
+func (x *RaftState) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_raft_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RaftState.ProtoReflect.Descriptor instead.
+func (*RaftState) Descriptor() ([]byte, []int) {
+	return file_proto_raft_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RaftState) GetCurrentTerm() int64 {
+	if x != nil {
+		return x.CurrentTerm
+	}
+	return 0
+}
+
+func (x *RaftState) GetVotedFor() int64 {
+	if x != nil {
+		return x.VotedFor
+	}
+	return 0
+}
+
+func (x *RaftState) GetLastIncludedIndex() int64 {
+	if x != nil {
+		return x.LastIncludedIndex
+	}
+	return 0
+}
+
+func (x *RaftState) GetLastIncludedTerm() int64 {
+	if x != nil {
+		return x.LastIncludedTerm
+	}
+	return 0
+}
+
+func (x *RaftState) GetEntries() []*LogEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
 var File_proto_raft_proto protoreflect.FileDescriptor
 
 const file_proto_raft_proto_rawDesc = "" +
@@ -381,7 +457,13 @@ const file_proto_raft_proto_rawDesc = "" +
 	"\x04term\x18\x01 \x01(\x03R\x04term\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12$\n" +
 	"\rconflictIndex\x18\x03 \x01(\x03R\rconflictIndex\x12\"\n" +
-	"\fconflictTerm\x18\x04 \x01(\x03R\fconflictTerm2t\n" +
+	"\fconflictTerm\x18\x04 \x01(\x03R\fconflictTerm\"\xc8\x01\n" +
+	"\tRaftState\x12 \n" +
+	"\vcurrentTerm\x18\x01 \x01(\x03R\vcurrentTerm\x12\x1a\n" +
+	"\bvotedFor\x18\x02 \x01(\x03R\bvotedFor\x12,\n" +
+	"\x11lastIncludedIndex\x18\x03 \x01(\x03R\x11lastIncludedIndex\x12*\n" +
+	"\x10lastIncludedTerm\x18\x04 \x01(\x03R\x10lastIncludedTerm\x12#\n" +
+	"\aentries\x18\x05 \x03(\v2\t.LogEntryR\aentries2t\n" +
 	"\x04Raft\x122\n" +
 	"\vRequestVote\x12\x10.RequestVoteArgs\x1a\x11.RequestVoteReply\x128\n" +
 	"\rAppendEntries\x12\x12.AppendEntriesArgs\x1a\x13.AppendEntriesReplyB,Z*github.com/RaduAndreiTudorica/raftkv/protob\x06proto3"
@@ -398,25 +480,27 @@ func file_proto_raft_proto_rawDescGZIP() []byte {
 	return file_proto_raft_proto_rawDescData
 }
 
-var file_proto_raft_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_raft_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_raft_proto_goTypes = []any{
 	(*RequestVoteArgs)(nil),    // 0: RequestVoteArgs
 	(*RequestVoteReply)(nil),   // 1: RequestVoteReply
 	(*LogEntry)(nil),           // 2: LogEntry
 	(*AppendEntriesArgs)(nil),  // 3: AppendEntriesArgs
 	(*AppendEntriesReply)(nil), // 4: AppendEntriesReply
+	(*RaftState)(nil),          // 5: RaftState
 }
 var file_proto_raft_proto_depIdxs = []int32{
 	2, // 0: AppendEntriesArgs.entries:type_name -> LogEntry
-	0, // 1: Raft.RequestVote:input_type -> RequestVoteArgs
-	3, // 2: Raft.AppendEntries:input_type -> AppendEntriesArgs
-	1, // 3: Raft.RequestVote:output_type -> RequestVoteReply
-	4, // 4: Raft.AppendEntries:output_type -> AppendEntriesReply
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: RaftState.entries:type_name -> LogEntry
+	0, // 2: Raft.RequestVote:input_type -> RequestVoteArgs
+	3, // 3: Raft.AppendEntries:input_type -> AppendEntriesArgs
+	1, // 4: Raft.RequestVote:output_type -> RequestVoteReply
+	4, // 5: Raft.AppendEntries:output_type -> AppendEntriesReply
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_raft_proto_init() }
@@ -430,7 +514,7 @@ func file_proto_raft_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_raft_proto_rawDesc), len(file_proto_raft_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
