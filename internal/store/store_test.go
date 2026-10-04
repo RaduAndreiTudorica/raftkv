@@ -28,7 +28,7 @@ var sameKeyValues = []string{
 	"v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10",
 }
 
-func TestStore_Put_Get(t *testing.T) {
+func TestStore_PutGet(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
@@ -45,7 +45,7 @@ func TestStore_Put_Get(t *testing.T) {
 	}
 }
 
-func TestStore_Get_NonExistentKey(t *testing.T) {
+func TestStore_GetNonExistentKey(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	_, exists := store.Get(key)
@@ -76,7 +76,7 @@ func TestStore_Delete(t *testing.T) {
 	}
 }
 
-func TestStore_Delete_NonExistentKey(t *testing.T) {
+func TestStore_DeleteNonExistentKey(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 
@@ -86,7 +86,7 @@ func TestStore_Delete_NonExistentKey(t *testing.T) {
 	}
 }
 
-func TestStore_Put_Overwrite(t *testing.T) {
+func TestStore_PutOverwrite(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
@@ -109,7 +109,7 @@ func TestStore_Put_Overwrite(t *testing.T) {
 	}
 }
 
-func TestStore_WAL_Persistence(t *testing.T) {
+func TestStore_WALPersistence(t *testing.T) {
 	dir := t.TempDir()
 
 	store1, _ := NewStore(dir)
@@ -126,7 +126,7 @@ func TestStore_WAL_Persistence(t *testing.T) {
 	}
 }
 
-func TestStore_WAL_ReplayOrder(t *testing.T) {
+func TestStore_WALReplayOrder(t *testing.T) {
 	dir := t.TempDir()
 
 	store1, _ := NewStore(dir)
@@ -151,7 +151,7 @@ func TestStore_WAL_ReplayOrder(t *testing.T) {
 	}
 }
 
-func TestStore_WAL_EmptyFile(t *testing.T) {
+func TestStore_WALEmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := NewStore(dir)
 

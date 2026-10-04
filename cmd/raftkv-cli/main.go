@@ -143,9 +143,8 @@ func cli() {
 	fmt.Println(raftBanner)
 	fmt.Println("Enter <help> to view all the commands")
 	scanner := bufio.NewScanner(os.Stdin)
-	for {
+	for scanner.Scan() {
 		fmt.Print("> ")
-		scanner.Scan()
 		command := scanner.Text()
 		token, args, err := parseCommand(command)
 
@@ -177,6 +176,9 @@ func cli() {
 			}
 		}
 
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println(err)
 	}
 }
 

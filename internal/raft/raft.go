@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	pb "google.golang.org/protobuf/proto"
@@ -25,6 +26,7 @@ type Raft struct {
 	// Node metadata & identity
 	Me   int
 	Role string
+	dead atomic.Bool
 
 	// Persistent state on all servers
 	persister   *Persister
@@ -120,8 +122,10 @@ func (rf *Raft) persist() {
 		return
 	}
 
-	rf.persister.saveState(data)
-
+	err = rf.persister.saveState(data)
+	if err != nil {
+		return
+	}
 }
 
 func (rf *Raft) GetState() State {
@@ -148,20 +152,14 @@ func (rf *Raft) lastLog() (int64, int64) {
 
 func (rf *Raft) heartBeat() {
 	rf.mutex.Lock()
-
 	if rf.Role != Leader {
 		rf.mutex.Unlock()
 		return
 	}
-
 	rf.LastMessage = time.Now()
 	me := rf.Me
 	peers := rf.Peers
-	args := &proto.AppendEntriesArgs{
-		Term:     rf.CurrentTerm,
-		LeaderId: int64(me),
-		Entries:  nil,
-	}
+	currentTerm := rf.CurrentTerm
 	rf.mutex.Unlock()
 
 	for index, peer := range peers {
@@ -169,7 +167,33 @@ func (rf *Raft) heartBeat() {
 			continue
 		}
 
-		go func(p proto.RaftClient) {
+		go func(targetID int, p proto.RaftClient) {
+			rf.mutex.Lock()
+			if rf.Role != Leader || rf.CurrentTerm != currentTerm {
+				rf.mutex.Unlock()
+				return
+			}
+
+			nextIdx := rf.NextIndex[targetID]
+			prevLogIdx := nextIdx - 1
+			prevLogTerm := rf.getEntryTerm(int(prevLogIdx))
+
+			sliceStart := nextIdx - rf.LastIncludedIndex
+			var entries []*proto.LogEntry
+			if sliceStart >= 0 && sliceStart < int64(len(rf.Log)) {
+				entries = rf.Log[sliceStart:]
+			}
+
+			args := &proto.AppendEntriesArgs{
+				Term:         rf.CurrentTerm,
+				LeaderId:     int64(rf.Me),
+				PrevLogIndex: prevLogIdx,
+				PrevLogTerm:  prevLogTerm,
+				Entries:      entries,
+				LeaderCommit: rf.CommitIndex,
+			}
+			rf.mutex.Unlock()
+
 			ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 			defer cancel()
 
@@ -180,13 +204,44 @@ func (rf *Raft) heartBeat() {
 
 			rf.mutex.Lock()
 			defer rf.mutex.Unlock()
+
+			if rf.Role != Leader || rf.CurrentTerm != args.Term {
+				return
+			}
 			if reply.Term > rf.CurrentTerm {
 				rf.Role = Follower
 				rf.VotedFor = -1
 				rf.CurrentTerm = reply.Term
 				rf.persist()
+				return
 			}
-		}(peer)
+
+			if reply.Success {
+				rf.MatchIndex[targetID] = args.PrevLogIndex + int64(len(args.Entries))
+				rf.NextIndex[targetID] = rf.MatchIndex[targetID] + 1
+				lastLogIndex, _ := rf.lastLog()
+				for N := lastLogIndex; N > rf.CommitIndex; N-- {
+					if rf.getEntryTerm(int(N)) == rf.CurrentTerm {
+						replicas := 1
+						for i := range rf.Peers {
+							if i != rf.Me && rf.MatchIndex[i] >= N {
+								replicas++
+							}
+						}
+						if replicas > len(rf.Peers)/2 {
+							rf.CommitIndex = N
+							break
+						}
+					}
+				}
+			} else {
+				if reply.ConflictIndex > 0 {
+					rf.NextIndex[targetID] = reply.ConflictIndex
+				} else {
+					rf.NextIndex[targetID] = max(int64(1), rf.NextIndex[targetID]-1)
+				}
+			}
+		}(index, peer) // Pasăm variabilele din loop în closure
 	}
 }
 
@@ -269,7 +324,7 @@ func (rf *Raft) startElection() {
 }
 
 func (rf *Raft) ticker() {
-	for {
+	for !rf.killed() {
 		rf.mutex.Lock()
 
 		switch rf.Role {
@@ -404,13 +459,12 @@ func (rf *Raft) AppendEntries(ctx context.Context, args *proto.AppendEntriesArgs
 		lastLogIdx, _ := rf.lastLog()
 
 		if entryIndex <= lastLogIdx {
-			if rf.getEntryTerm(int(entryIndex)) != args.PrevLogTerm {
+			if rf.getEntryTerm(int(entryIndex)) != entry.Term {
 				sliceIndex := entryIndex - rf.LastIncludedIndex
 				rf.Log = rf.Log[:sliceIndex]
 
 				rf.Log = append(rf.Log, args.Entries[i:]...)
 				changed = true
-
 				break
 			}
 		} else {
@@ -459,4 +513,12 @@ func (rf *Raft) Start(command []byte) (int, int, bool) {
 	go rf.heartBeat()
 
 	return int(newIndex), int(term), true
+}
+
+func (rf *Raft) Kill() {
+	rf.dead.Store(true)
+}
+
+func (rf *Raft) killed() bool {
+	return rf.dead.Load()
 }
