@@ -1,8 +1,7 @@
 # raftkv
 
 > A distributed, replicated key-value store built on the Raft consensus algorithm.
-> Written in Go, with a pluggable storage engine in Rust and a real-time cluster
-> dashboard in Elixir. Deployed on Kubernetes.
+> Written in Go. Deployed on Kubernetes.
 
 [![CI](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml/badge.svg)](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml)
 [![License: BSD-3](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
@@ -13,8 +12,8 @@
 
 `raftkv` is a fault-tolerant key-value store. Multiple nodes keep the same data
 in sync via the Raft consensus protocol, so the cluster keeps serving reads and
-writes even when a minority of nodes crash. It exposes a gRPC API and ships with
-metrics, a live dashboard, and Kubernetes manifests.
+writes even when a minority of nodes crash. It exposes a gRPC API, an interactive
+CLI client, and ships with metrics and Kubernetes manifests.
 
 ## Architecture
 
@@ -29,8 +28,7 @@ client-> │  node A  │ <-Raft-> │  node B  │
                     │(follower)│
                     └──────────┘
 
-  each node = Go server (gRPC + Raft) ──▶ storage engine (Rust: WAL + LSM)
-  Elixir/Phoenix LiveView dashboard subscribes to cluster state (leader, lag, up/down)
+  each node = Go server (gRPC + Raft consensus) ──▶ storage engine (WAL + KV State Machine)
 ```
 
 ## Features
@@ -38,7 +36,7 @@ client-> │  node A  │ <-Raft-> │  node B  │
 - Strong consistency via Raft (leader election, log replication, snapshots)
 - gRPC / Protocol Buffers API: `Get`, `Put`, `Delete`
 - Write-Ahead Log for durability
-- Pluggable storage backend (in-memory map, or Rust LSM engine)
+- Pluggable storage backend (in-memory map with WAL persistence)
 - Prometheus metrics + Grafana dashboards
 - Kubernetes-native (StatefulSet, headless Service, PVCs)
 
@@ -71,12 +69,10 @@ kubectl get pods -l app=raftkv
 
 | Path            | Purpose                                       |
 |-----------------|-----------------------------------------------|
-| `cmd/`          | Binary entry points                           |
+| `cmd/`          | Binary entry points (server & CLI)            |
 | `internal/raft` | Consensus layer                               |
 | `internal/store`| KV state machine + WAL                         |
 | `proto/`        | gRPC / protobuf definitions                    |
-| `engine/`       | Rust storage engine (LSM + WAL)                |
-| `dashboard/`    | Elixir / Phoenix LiveView cluster dashboard    |
 | `deploy/`       | Dockerfile, docker-compose, k8s manifests, Helm|
 
 ## Development
@@ -92,12 +88,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and workflow.
 ## Roadmap
 
 - [x] Single-node KV store (gRPC + WAL)
+- [x] CLI client (`raftkv-cli`)
 - [x] Docker + compose
-- [ ] Raft replication (hashicorp/raft)
+- [ ] Raft consensus & replication
 - [ ] Kubernetes deployment (StatefulSet)
 - [ ] Prometheus + Grafana observability
-- [ ] Elixir LiveView dashboard
-- [ ] Rust storage engine (LSM-tree)
 - [ ] Sharding via consistent hashing
 
 ## License
