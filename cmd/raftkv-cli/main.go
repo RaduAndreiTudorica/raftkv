@@ -12,13 +12,17 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/RaduAndreiTudorica/raftkv/proto"
 )
 
 var (
-	addr             = flag.String("addr", "localhost:60000", "the address to connect to")
+	addrs            = flag.String("addrs", "localhost:60000,localhost:60001,localhost:60002", "the address to connect to")
+	nodes            []string
+	conn             *grpc.ClientConn
 	client           proto.KVClient
 	ErrValueNotFound = errors.New("not found")
 )
@@ -143,8 +147,9 @@ func cli() {
 	fmt.Println(raftBanner)
 	fmt.Println("Enter <help> to view all the commands")
 	scanner := bufio.NewScanner(os.Stdin)
+
+	fmt.Print("> ")
 	for scanner.Scan() {
-		fmt.Print("> ")
 		command := scanner.Text()
 		token, args, err := parseCommand(command)
 
@@ -155,17 +160,46 @@ func cli() {
 			case "put":
 				err := putMessage(args)
 				if err != nil {
+					st, ok := status.FromError(err)
+					if ok && st.Code() == codes.Unavailable && strings.Contains(st.Message(), "not the leader") {
+						fmt.Println("[System] Leader changed or wrong node. Rediscovering cluster...")
+						recoverConnection()
+						err = putMessage(args)
+					}
+				}
+
+				if err != nil {
 					fmt.Println(err)
 				}
+
 			case "get":
 				value, err := getMessage(args)
+				if err != nil {
+					st, ok := status.FromError(err)
+					if ok && st.Code() == codes.Unavailable && strings.Contains(st.Message(), "not the leader") {
+						fmt.Println("[System] Leader changed or wrong node. Rediscovering cluster...")
+						recoverConnection()
+						value, err = getMessage(args)
+					}
+				}
+
 				if err != nil {
 					fmt.Println(err)
 				} else {
 					fmt.Println(value)
 				}
+
 			case "delete":
 				err := deleteMessage(args)
+				if err != nil {
+					st, ok := status.FromError(err)
+					if ok && st.Code() == codes.Unavailable && strings.Contains(st.Message(), "not the leader") {
+						fmt.Println("[System] Leader changed or wrong node. Rediscovering cluster...")
+						recoverConnection()
+						err = deleteMessage(args)
+					}
+				}
+
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -175,22 +209,70 @@ func cli() {
 				os.Exit(0)
 			}
 		}
-
+		fmt.Print("> ")
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Println(err)
 	}
 }
 
-func main() {
-	flag.Parse()
+func ping(nodes []string) string {
+	for _, addr := range nodes {
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			continue
+		}
 
-	conn, err := grpc.NewClient(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		client := proto.NewKVClient(conn)
 
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		reply, err := client.Ping(ctx, &proto.PingRequest{})
+		cancel()
+		conn.Close()
+
+		if err != nil {
+			fmt.Printf("[Debug] Ping către %s a eșuat: %v\n", addr, err)
+			continue
+		}
+
+		if err == nil {
+			if reply.IsLeader {
+				return addr
+			}
+
+			if reply.LeaderId >= 0 && int(reply.LeaderId) < len(nodes) {
+				return nodes[reply.LeaderId]
+			}
+		}
+	}
+
+	return ""
+}
+
+func recoverConnection() {
+	if conn != nil {
+		conn.Close()
+	}
+
+	leader := ping(nodes)
+	if leader == "" {
+		log.Fatalf("cluster is currently unavailable: no leader found")
+	}
+
+	var err error
+	conn, err = grpc.NewClient(leader, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-	defer conn.Close()
 	client = proto.NewKVClient(conn)
+}
+
+func main() {
+	flag.Parse()
+	nodes = strings.Split(*addrs, ",")
+
+	recoverConnection()
+	defer conn.Close()
+
 	cli()
 }

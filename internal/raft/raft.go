@@ -18,6 +18,12 @@ const (
 	Follower  string = "follower"
 )
 
+type ApplyMsg struct {
+	CommandValid bool
+	Command      interface{}
+	CommandIndex int
+}
+
 type Raft struct {
 	proto.UnimplementedRaftServer
 
@@ -27,6 +33,9 @@ type Raft struct {
 	Me   int
 	Role string
 	dead atomic.Bool
+
+	applyCh   chan ApplyMsg
+	applyCond *sync.Cond
 
 	// Persistent state on all servers
 	persister   *Persister
@@ -54,18 +63,19 @@ type Raft struct {
 }
 
 type State struct {
-	isLeader    bool
-	leaderId    int
-	currentTerm int64
-	lastMessage time.Time
+	IsLeader    bool
+	LeaderId    int
+	CurrentTerm int64
+	LastMessage time.Time
 }
 
-func NewRaft(me int, peers []proto.RaftClient, pr *Persister) *Raft {
+func NewRaft(me int, peers []proto.RaftClient, pr *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{
 		Peers:       peers,
 		Me:          me,
 		Role:        Follower,
 		persister:   pr,
+		applyCh:     applyCh,
 		LeaderId:    -1,
 		CurrentTerm: 0,
 		VotedFor:    -1,
@@ -77,10 +87,16 @@ func NewRaft(me int, peers []proto.RaftClient, pr *Persister) *Raft {
 		Log:         []*proto.LogEntry{{Index: 0, Term: 0}},
 	}
 
+	rf.applyCond = sync.NewCond(&rf.mutex)
+
 	rf.resetElectionTimeout()
 
 	data := rf.persister.readState()
 	rf.readPersist(data)
+
+	go rf.ticker()
+	go rf.applier()
+
 	return rf
 }
 
@@ -135,10 +151,10 @@ func (rf *Raft) GetState() State {
 	isLeader := rf.Role == Leader
 
 	return State{
-		isLeader:    isLeader,
-		leaderId:    rf.LeaderId,
-		currentTerm: rf.CurrentTerm,
-		lastMessage: rf.LastMessage,
+		IsLeader:    isLeader,
+		LeaderId:    rf.LeaderId,
+		CurrentTerm: rf.CurrentTerm,
+		LastMessage: rf.LastMessage,
 	}
 }
 
@@ -230,6 +246,7 @@ func (rf *Raft) heartBeat() {
 						}
 						if replicas > len(rf.Peers)/2 {
 							rf.CommitIndex = N
+							rf.applyCond.Broadcast()
 							break
 						}
 					}
@@ -241,7 +258,7 @@ func (rf *Raft) heartBeat() {
 					rf.NextIndex[targetID] = max(int64(1), rf.NextIndex[targetID]-1)
 				}
 			}
-		}(index, peer) // Pasăm variabilele din loop în closure
+		}(index, peer)
 	}
 }
 
@@ -513,6 +530,33 @@ func (rf *Raft) Start(command []byte) (int, int, bool) {
 	go rf.heartBeat()
 
 	return int(newIndex), int(term), true
+}
+
+func (rf *Raft) applier() {
+	for {
+		rf.mutex.Lock()
+		for rf.CommitIndex <= rf.LastApplied {
+			rf.applyCond.Wait()
+		}
+
+		var commands []interface{}
+		var indexes []int
+		for index := rf.LastApplied + 1; index <= rf.CommitIndex; index++ {
+			commands = append(commands, rf.Log[index].Command)
+			indexes = append(indexes, int(index))
+		}
+		rf.LastApplied = rf.CommitIndex
+		rf.mutex.Unlock()
+
+		for i, cmd := range commands {
+			rf.applyCh <- ApplyMsg{
+				CommandValid: true,
+				Command:      cmd,
+				CommandIndex: indexes[i],
+			}
+
+		}
+	}
 }
 
 func (rf *Raft) Kill() {

@@ -54,7 +54,7 @@ Run the cli client
 # the client will use the port 60000
 cd raftkv
 docker build -f Dockerfile.cli -t raftkv-cli .
-docker run -it --add-host=host.docker.internal:host-gateway raftkv-cli --addr host.docker.internal:60000
+docker run -it --add-host=host.docker.internal:host-gateway raftkv-cli --addrs host.docker.internal:60000,host.docker.internal:60001,host.docker.internal:60002
 ```
 
 
@@ -90,7 +90,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and workflow.
 - [x] Single-node KV store (gRPC + WAL)
 - [x] CLI client (`raftkv-cli`)
 - [x] Docker + compose
-- [ ] Raft consensus & replication
+- [x] Raft consensus & replication
 - [ ] Kubernetes deployment (StatefulSet)
 - [ ] Prometheus + Grafana observability
 - [ ] Sharding via consistent hashing

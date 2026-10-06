@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+var applyCh chan ApplyMsg
+
 type MockNetwork struct {
 	mu        sync.Mutex
 	nodes     map[int]*Raft
@@ -85,12 +87,12 @@ func CreateMockNetwork(t *testing.T, numNodes int) (*MockNetwork, []*Raft) {
 		}
 
 		stateFile := filepath.Join(t.TempDir(), fmt.Sprintf("state_node_%d.bin", i))
-		localPersister := newPersister(stateFile)
+		localPersister := NewPersister(stateFile)
 
 		net.peers[i] = localPeers
 		net.persisters[i] = localPersister
 
-		rafts[i] = NewRaft(i, localPeers, localPersister)
+		rafts[i] = NewRaft(i, localPeers, localPersister, applyCh)
 		net.nodes[i] = rafts[i]
 	}
 
@@ -129,9 +131,9 @@ func TestRaft_InitialElection(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		state := rafts[i].GetState()
-		if state.isLeader {
+		if state.IsLeader {
 			leaders++
-			leaderTerm = state.currentTerm
+			leaderTerm = state.CurrentTerm
 		}
 	}
 
@@ -141,8 +143,8 @@ func TestRaft_InitialElection(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		state := rafts[i].GetState()
-		if !state.isLeader && state.currentTerm != leaderTerm {
-			t.Fatalf("Term mismatch: node %d has %d, leader has %d", i, state.currentTerm, leaderTerm)
+		if !state.IsLeader && state.CurrentTerm != leaderTerm {
+			t.Fatalf("Term mismatch: node %d has %d, leader has %d", i, state.CurrentTerm, leaderTerm)
 		}
 	}
 }
@@ -156,9 +158,9 @@ func TestRaft_ReElection(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		state := rafts[i].GetState()
-		if state.isLeader {
+		if state.IsLeader {
 			oldLeaderID = i
-			oldLeaderTerm = state.currentTerm
+			oldLeaderTerm = state.CurrentTerm
 			break
 		}
 	}
@@ -178,9 +180,9 @@ func TestRaft_ReElection(t *testing.T) {
 		}
 
 		state := rafts[i].GetState()
-		if state.isLeader {
+		if state.IsLeader {
 			newLeaderID = i
-			newLeaderTerm = state.currentTerm
+			newLeaderTerm = state.CurrentTerm
 			break
 		}
 	}
@@ -199,10 +201,10 @@ func TestRaft_ReElection(t *testing.T) {
 	leaders := 0
 	for i := 0; i < 3; i++ {
 		state := rafts[i].GetState()
-		if state.isLeader {
+		if state.IsLeader {
 			leaders++
 		}
-		if i == oldLeaderID && state.isLeader {
+		if i == oldLeaderID && state.IsLeader {
 			t.Fatalf("old leader failed to step down as follower")
 		}
 	}
@@ -219,7 +221,7 @@ func TestRaft_BasicAgree(t *testing.T) {
 	leaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -260,7 +262,7 @@ func TestRaft_FailAgree(t *testing.T) {
 	leaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -304,7 +306,7 @@ func TestRaft_FailNoAgree(t *testing.T) {
 	leaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -349,7 +351,7 @@ func TestRaft_Rejoin(t *testing.T) {
 	oldLeaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			oldLeaderID = i
 			break
 		}
@@ -374,7 +376,7 @@ func TestRaft_Rejoin(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	newLeaderID := -1
 	for i := 0; i < 5; i++ {
-		if i != oldLeaderID && rafts[i].GetState().isLeader {
+		if i != oldLeaderID && rafts[i].GetState().IsLeader {
 			newLeaderID = i
 			break
 		}
@@ -386,7 +388,7 @@ func TestRaft_Rejoin(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		state := rafts[i].GetState()
-		if i != oldLeaderID && state.isLeader {
+		if i != oldLeaderID && state.IsLeader {
 			newLeaderID = i
 			break
 		}
@@ -434,7 +436,7 @@ func TestRaft_ConcurrentStarts(t *testing.T) {
 	leaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -464,7 +466,7 @@ func TestRaft_PersistBasic(t *testing.T) {
 	leaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -479,7 +481,7 @@ func TestRaft_PersistBasic(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	network.Disconnect(2)
-	rafts[2] = NewRaft(2, network.peers[2], network.persisters[2])
+	rafts[2] = NewRaft(2, network.peers[2], network.persisters[2], applyCh)
 	network.nodes[2] = rafts[2]
 
 	network.Connect(2)
@@ -501,7 +503,7 @@ func TestRaft_PersistMore(t *testing.T) {
 	leaderID := -1
 
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -522,7 +524,7 @@ func TestRaft_PersistMore(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	for i := 0; i < 3; i++ {
-		rafts[i] = NewRaft(i, network.peers[i], network.persisters[i])
+		rafts[i] = NewRaft(i, network.peers[i], network.persisters[i], applyCh)
 
 		network.mu.Lock()
 		network.nodes[i] = rafts[i]
@@ -534,7 +536,7 @@ func TestRaft_PersistMore(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	newLeaderID := -1
 	for i := 0; i < 3; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			newLeaderID = i
 			break
 		}
@@ -560,7 +562,7 @@ func TestRaft_PersistPartition(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	oldLeaderID := -1
 	for i := 0; i < 5; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			oldLeaderID = i
 			break
 		}
@@ -580,7 +582,7 @@ func TestRaft_PersistPartition(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	newLeaderID := -1
 	for i := 0; i < 5; i++ {
-		if i != oldLeaderID && i != minorityNode && rafts[i].GetState().isLeader {
+		if i != oldLeaderID && i != minorityNode && rafts[i].GetState().IsLeader {
 			newLeaderID = i
 			break
 		}
@@ -603,7 +605,7 @@ func TestRaft_PersistPartition(t *testing.T) {
 	network.Connect(minorityNode)
 
 	for i := 0; i < 5; i++ {
-		rafts[i] = NewRaft(i, network.peers[i], network.persisters[i])
+		rafts[i] = NewRaft(i, network.peers[i], network.persisters[i], applyCh)
 
 		network.mu.Lock()
 		network.nodes[i] = rafts[i]
@@ -647,7 +649,7 @@ func TestRaft_Figure8(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		leaderID := -1
 		for j := 0; j < 5; j++ {
-			if rafts[j].GetState().isLeader {
+			if rafts[j].GetState().IsLeader {
 				leaderID = j
 				break
 			}
@@ -675,7 +677,7 @@ func TestRaft_Figure8(t *testing.T) {
 
 	leaderID := -1
 	for i := 0; i < 5; i++ {
-		if rafts[i].GetState().isLeader {
+		if rafts[i].GetState().IsLeader {
 			leaderID = i
 			break
 		}
@@ -760,7 +762,7 @@ func TestRaft_UnreliableNetwork(t *testing.T) {
 			cmd := fmt.Appendf(nil, "STRESS_%d", cmdNum)
 
 			for j := 0; j < 5; j++ {
-				if rafts[j].GetState().isLeader {
+				if rafts[j].GetState().IsLeader {
 					rafts[j].Start(cmd)
 					break
 				}

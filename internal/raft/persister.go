@@ -10,7 +10,7 @@ type Persister struct {
 	filePath string
 }
 
-func newPersister(path string) *Persister {
+func NewPersister(path string) *Persister {
 	return &Persister{filePath: path}
 }
 
