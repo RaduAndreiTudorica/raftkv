@@ -2,10 +2,30 @@ syntax = "proto3";
 
 option go_package = "github.com/RaduAndreiTudorica/raftkv/proto";
 
+enum OpType {
+    UNKNOWN = 0;
+    PUT = 1;
+    DELETE = 2;
+    GET = 3;
+}
+
+message InternalCommand {
+    OpType type = 1;
+    bytes payload = 2;
+}
+
 service KV {
+    rpc Ping(PingRequest) returns (PingResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc Put(PutRequest) returns (PutResponse);
     rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+message PingRequest {}
+
+message PingResponse {
+    bool is_leader = 1;
+    int32 leader_id = 2;
 }
 
 message GetRequest {

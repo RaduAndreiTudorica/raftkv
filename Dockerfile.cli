@@ -1,4 +1,4 @@
-FROM golang:1.26 AS builder
+FROM golang:1.27 AS builder
 
 WORKDIR /app
 
@@ -13,4 +13,4 @@ FROM alpine
 COPY --from=builder /raftkv-cli /raftkv-cli
 
 ENTRYPOINT ["/raftkv-cli"]
-CMD ["--addr", "host.docker.internal:60000"]
+CMD ["--addrs", "host.docker.internal:60000,host.docker.internal:60001,host.docker.internal:60002"]

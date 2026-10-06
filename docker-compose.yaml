@@ -8,18 +8,35 @@ services:
     <<: *node-config
     ports:
       - '60000:50051'
+    environment:
+      - NODE_ID=0
+      - RAFT_PEERS=node1:50051,node2:50051,node3:50051
+      - RAFT_PATH=/store/raft_state.dat
+      - WALPATH=/store/wal.dat
     volumes:
       - node1-data:/store
+      
   node2:
     <<: *node-config
     ports:
       - '60001:50051'
+    environment:
+      - NODE_ID=1
+      - RAFT_PEERS=node1:50051,node2:50051,node3:50051
+      - RAFT_PATH=/store/raft_state.dat
+      - WALPATH=/store/wal.dat
     volumes:
       - node2-data:/store
+      
   node3:
     <<: *node-config
     ports:
       - '60002:50051'
+    environment:
+      - NODE_ID=2
+      - RAFT_PEERS=node1:50051,node2:50051,node3:50051
+      - RAFT_PATH=/store/raft_state.dat
+      - WALPATH=/store/wal.dat
     volumes:
       - node3-data:/store
 

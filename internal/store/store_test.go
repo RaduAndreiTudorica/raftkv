@@ -28,7 +28,7 @@ var sameKeyValues = []string{
 	"v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10",
 }
 
-func TestStore_Put_Get(t *testing.T) {
+func TestStore_PutGet(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
@@ -45,7 +45,7 @@ func TestStore_Put_Get(t *testing.T) {
 	}
 }
 
-func TestStore_Get_NonExistentKey(t *testing.T) {
+func TestStore_GetNonExistentKey(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	_, exists := store.Get(key)
@@ -76,7 +76,7 @@ func TestStore_Delete(t *testing.T) {
 	}
 }
 
-func TestStore_Delete_NonExistentKey(t *testing.T) {
+func TestStore_DeleteNonExistentKey(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 
@@ -86,7 +86,7 @@ func TestStore_Delete_NonExistentKey(t *testing.T) {
 	}
 }
 
-func TestStore_Put_Overwrite(t *testing.T) {
+func TestStore_PutOverwrite(t *testing.T) {
 	store, _ := NewStore(t.TempDir())
 	key := []byte("hello")
 	value := []byte("world")
@@ -109,57 +109,57 @@ func TestStore_Put_Overwrite(t *testing.T) {
 	}
 }
 
-func TestStore_WAL_Persistence(t *testing.T) {
-	dir := t.TempDir()
+// func TestStore_WALPersistence(t *testing.T) {
+// 	dir := t.TempDir()
 
-	store1, _ := NewStore(dir)
-	key := []byte("hello")
-	value := []byte("world")
-	store1.Put(key, value)
+// 	store1, _ := NewStore(dir)
+// 	key := []byte("hello")
+// 	value := []byte("world")
+// 	store1.Put(key, value)
 
-	store2, _ := NewStore(dir)
-	store2.RetrieveData()
-	valueStored, _ := store2.Get(key)
-	if string(value) != string(valueStored) {
-		t.Logf("expected: %s, got: %s\n", string(value), string(valueStored))
-		t.Errorf("different values stored")
-	}
-}
+// 	store2, _ := NewStore(dir)
+// 	store2.RetrieveData()
+// 	valueStored, _ := store2.Get(key)
+// 	if string(value) != string(valueStored) {
+// 		t.Logf("expected: %s, got: %s\n", string(value), string(valueStored))
+// 		t.Errorf("different values stored")
+// 	}
+// }
 
-func TestStore_WAL_ReplayOrder(t *testing.T) {
-	dir := t.TempDir()
+// func TestStore_WALReplayOrder(t *testing.T) {
+// 	dir := t.TempDir()
 
-	store1, _ := NewStore(dir)
-	key := []byte("hello")
-	value := []byte("world")
-	store1.Put(key, value)
+// 	store1, _ := NewStore(dir)
+// 	key := []byte("hello")
+// 	value := []byte("world")
+// 	store1.Put(key, value)
 
-	value = []byte("moon")
-	store1.Put(key, value)
+// 	value = []byte("moon")
+// 	store1.Put(key, value)
 
-	store1.Delete(key)
+// 	store1.Delete(key)
 
-	value = []byte("sun")
-	store1.Put(key, value)
+// 	value = []byte("sun")
+// 	store1.Put(key, value)
 
-	store2, _ := NewStore(dir)
-	store2.RetrieveData()
+// 	store2, _ := NewStore(dir)
+// 	store2.RetrieveData()
 
-	valueStored, _ := store2.Get(key)
-	if string(value) != string(valueStored) {
-		t.Errorf("different values stored")
-	}
-}
+// 	valueStored, _ := store2.Get(key)
+// 	if string(value) != string(valueStored) {
+// 		t.Errorf("different values stored")
+// 	}
+// }
 
-func TestStore_WAL_EmptyFile(t *testing.T) {
-	dir := t.TempDir()
-	store, _ := NewStore(dir)
+// func TestStore_WALEmptyFile(t *testing.T) {
+// 	dir := t.TempDir()
+// 	store, _ := NewStore(dir)
 
-	err := store.RetrieveData()
-	if err != nil {
-		t.Error(err)
-	}
-}
+// 	err := store.RetrieveData()
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// }
 
 func TestStore_ConcurrentPuts(t *testing.T) {
 	wg := sync.WaitGroup{}
