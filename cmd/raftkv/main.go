@@ -54,6 +54,14 @@ func main() {
 		*walPath = os.Getenv("WALPATH")
 	}
 
+	if os.Getenv("RAFT_PATH") != "" {
+		*raftPath = os.Getenv("RAFT_PATH")
+	}
+
+	if err := os.MkdirAll(filepath.Dir(*raftPath), 0755); err != nil {
+		log.Fatalf("failed to create directory for raft state: %v", err)
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

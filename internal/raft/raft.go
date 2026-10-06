@@ -93,6 +93,7 @@ func NewRaft(me int, peers []proto.RaftClient, pr *Persister, applyCh chan Apply
 
 	data := rf.persister.readState()
 	rf.readPersist(data)
+	rf.CommitIndex = rf.persister.readCommitIndex()
 
 	go rf.ticker()
 	go rf.applier()
@@ -246,6 +247,7 @@ func (rf *Raft) heartBeat() {
 						}
 						if replicas > len(rf.Peers)/2 {
 							rf.CommitIndex = N
+							_ = rf.persister.saveCommitIndex(rf.CommitIndex)
 							rf.applyCond.Broadcast()
 							break
 						}
@@ -497,6 +499,8 @@ func (rf *Raft) AppendEntries(ctx context.Context, args *proto.AppendEntriesArgs
 	if args.LeaderCommit > rf.CommitIndex {
 		lastIndex, _ := rf.lastLog()
 		rf.CommitIndex = min(lastIndex, args.LeaderCommit)
+		_ = rf.persister.saveCommitIndex(rf.CommitIndex)
+		rf.applyCond.Broadcast()
 	}
 
 	return &proto.AppendEntriesReply{
@@ -533,10 +537,14 @@ func (rf *Raft) Start(command []byte) (int, int, bool) {
 }
 
 func (rf *Raft) applier() {
-	for {
+	for !rf.killed() {
 		rf.mutex.Lock()
-		for rf.CommitIndex <= rf.LastApplied {
+		for rf.CommitIndex <= rf.LastApplied && !rf.killed() {
 			rf.applyCond.Wait()
+		}
+		if rf.killed() {
+			rf.mutex.Unlock()
+			return
 		}
 
 		var commands []interface{}
@@ -549,18 +557,20 @@ func (rf *Raft) applier() {
 		rf.mutex.Unlock()
 
 		for i, cmd := range commands {
-			rf.applyCh <- ApplyMsg{
-				CommandValid: true,
-				Command:      cmd,
-				CommandIndex: indexes[i],
+			if rf.applyCh != nil {
+				rf.applyCh <- ApplyMsg{
+					CommandValid: true,
+					Command:      cmd,
+					CommandIndex: indexes[i],
+				}
 			}
-
 		}
 	}
 }
 
 func (rf *Raft) Kill() {
 	rf.dead.Store(true)
+	rf.applyCond.Broadcast()
 }
 
 func (rf *Raft) killed() bool {

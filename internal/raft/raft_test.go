@@ -15,7 +15,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-var applyCh chan ApplyMsg
+var applyCh = make(chan ApplyMsg, 1000)
+
+func init() {
+	go func() {
+		for range applyCh {
+		}
+	}()
+}
 
 type MockNetwork struct {
 	mu        sync.Mutex
@@ -39,8 +46,8 @@ func (c *MockClient) AppendEntries(ctx context.Context, in *proto.AppendEntriesA
 	targetNode := c.net.nodes[c.serverID]
 	c.net.mu.Unlock()
 
-	if !senderConnected || !targetConnected {
-		return nil, fmt.Errorf("rpc timeout: conexiune întreruptă")
+	if !senderConnected || !targetConnected || targetNode == nil {
+		return nil, fmt.Errorf("RPC timeout: connection interrupted")
 	}
 
 	time.Sleep(5 * time.Millisecond)
@@ -54,8 +61,8 @@ func (c *MockClient) RequestVote(ctx context.Context, in *proto.RequestVoteArgs,
 	targetNode := c.net.nodes[c.serverID]
 	c.net.mu.Unlock()
 
-	if !senderConnected || !targetConnected {
-		return nil, fmt.Errorf("rpc timeout: conexiune întreruptă")
+	if !senderConnected || !targetConnected || targetNode == nil {
+		return nil, fmt.Errorf("RPC timeout: connection interrupted")
 	}
 
 	time.Sleep(5 * time.Millisecond)
@@ -72,9 +79,11 @@ func CreateMockNetwork(t *testing.T, numNodes int) (*MockNetwork, []*Raft) {
 
 	rafts := make([]*Raft, numNodes)
 
+	net.mu.Lock()
 	for i := 0; i < numNodes; i++ {
 		net.connected[i] = true
 	}
+	net.mu.Unlock()
 
 	for i := 0; i < numNodes; i++ {
 		localPeers := make([]proto.RaftClient, numNodes)
@@ -89,15 +98,16 @@ func CreateMockNetwork(t *testing.T, numNodes int) (*MockNetwork, []*Raft) {
 		stateFile := filepath.Join(t.TempDir(), fmt.Sprintf("state_node_%d.bin", i))
 		localPersister := NewPersister(stateFile)
 
+		net.mu.Lock()
 		net.peers[i] = localPeers
 		net.persisters[i] = localPersister
+		net.mu.Unlock()
 
 		rafts[i] = NewRaft(i, localPeers, localPersister, applyCh)
-		net.nodes[i] = rafts[i]
-	}
 
-	for i := 0; i < numNodes; i++ {
-		go rafts[i].ticker()
+		net.mu.Lock()
+		net.nodes[i] = rafts[i]
+		net.mu.Unlock()
 	}
 
 	return net, rafts
@@ -529,8 +539,6 @@ func TestRaft_PersistMore(t *testing.T) {
 		network.mu.Lock()
 		network.nodes[i] = rafts[i]
 		network.mu.Unlock()
-
-		go rafts[i].ticker()
 	}
 
 	time.Sleep(2 * time.Second)
@@ -610,8 +618,6 @@ func TestRaft_PersistPartition(t *testing.T) {
 		network.mu.Lock()
 		network.nodes[i] = rafts[i]
 		network.mu.Unlock()
-
-		go rafts[i].ticker()
 	}
 
 	time.Sleep(2 * time.Second)
