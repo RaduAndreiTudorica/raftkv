@@ -45,8 +45,7 @@ client-> │  node A  │ <-Raft-> │  node B  │
 Run a 3-node cluster locally:
 
 ```bash
-docker compose up --build          # 3 nodes on ports 60000-60002
-grpcurl -plaintext localhost:60000 raftkv.KV/Put ...
+docker compose -f deployments/docker-compose.yaml up --build          # 3 nodes on ports 60000-60002
 ```
 
 Run the cli client
@@ -61,9 +60,14 @@ docker run -it --add-host=host.docker.internal:host-gateway raftkv-cli --addrs h
 Deploy on Kubernetes (kind/minikube):
 
 ```bash
+# 1. Apply the configuration, headless service, statefulset, and client deployment
 kubectl apply -f deploy/k8s/
-kubectl get pods -l app=raftkv
-```
+
+# 2. Wait for the 3 Raft nodes and the client pod to be Ready (1/1)
+kubectl get pods -w
+
+# 3. Connect to the interactive CLI using the client pod running in the background
+kubectl exec -it deployment/raftkv-client -- /raftkv-cli --addrs raftkv-0.raftkv-service:50051,raftkv-1.raftkv-service:50051,raftkv-2.raftkv-service:50051
 
 ## Project structure
 
@@ -91,7 +95,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and workflow.
 - [x] CLI client (`raftkv-cli`)
 - [x] Docker + compose
 - [x] Raft consensus & replication
-- [ ] Kubernetes deployment (StatefulSet)
+- [x] Kubernetes deployment (StatefulSet)
 - [ ] Prometheus + Grafana observability
 - [ ] Sharding via consistent hashing
 

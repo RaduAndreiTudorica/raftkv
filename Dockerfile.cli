@@ -13,4 +13,4 @@ FROM alpine
 COPY --from=builder /raftkv-cli /raftkv-cli
 
 ENTRYPOINT ["/raftkv-cli"]
-CMD ["--addrs", "host.docker.internal:60000,host.docker.internal:60001,host.docker.internal:60002"]
+CMD ["--addrs", "raftkv-0.raftkv-service:50051,raftkv-1.raftkv-service:50051,raftkv-2.raftkv-service:50051"]
