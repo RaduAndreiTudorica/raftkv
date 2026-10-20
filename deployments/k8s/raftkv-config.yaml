@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: raftkv-config
+data:
+  RAFT_PEERS: "raftkv-0.raftkv-service:50051,raftkv-1.raftkv-service:50051,raftkv-2.raftkv-service:50051"
+  RAFT_PATH: "/store/raft_state.dat"
+  WALPATH: "/store/wal.dat"

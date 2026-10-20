@@ -1,6 +1,6 @@
 x-go-base: &node-config
   build:
-    context: .
+    context: ../
     dockerfile: Dockerfile
 
 services:

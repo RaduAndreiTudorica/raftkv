@@ -231,7 +231,7 @@ func ping(nodes []string) string {
 		conn.Close()
 
 		if err != nil {
-			fmt.Printf("[Debug] Ping către %s a eșuat: %v\n", addr, err)
+			fmt.Printf("[Debug] Ping to %s failed: %v\n", addr, err)
 			continue
 		}
 

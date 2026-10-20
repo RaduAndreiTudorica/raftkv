@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: raftkv-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: raftkv-client
+  template:
+    metadata:
+      labels:
+        app: raftkv-client
+    spec:
+      containers:
+      - name: cli
+        image: rak3/raftkv-cli:latest
+        command: ["/bin/sh", "-c", "sleep infinity"]

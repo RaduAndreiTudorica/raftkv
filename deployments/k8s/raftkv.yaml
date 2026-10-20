@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: raftkv
+  labels:
+    app: raftkv
+spec:
+  serviceName: "raftkv-service"
+  replicas: 3
+  selector:
+    matchLabels: 
+      app: raftkv
+  template:
+    metadata:
+      labels:
+        app: raftkv
+    spec:
+      containers:
+      - name: raft
+        image: rak3/raftkv-node:latest
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        envFrom:
+        - configMapRef: 
+            name: raftkv-config
+        ports:
+        - containerPort: 50051
+        command: ["/bin/sh", "-c"]
+        args: ["export NODE_ID=${POD_NAME##*-}; exec /raftkv"]
+        volumeMounts:
+        - name: store-vol
+          mountPath: /store
+      volumes:
+      - name: store-vol
+        emptyDir: {}
