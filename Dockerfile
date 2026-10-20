@@ -1,4 +1,4 @@
-FROM golang:1.27 AS builder
+FROM golang:1.27-alpine3.22 AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o /raftkv ./cmd/raftkv
 
-FROM alpine
+FROM scratch
 COPY --from=builder /raftkv /raftkv
 
 ENV WALPATH="/store"
