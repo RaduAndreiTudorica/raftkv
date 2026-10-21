@@ -44,7 +44,7 @@ client-> │  node A  │ <-Raft-> │  node B  │
 Run a 3-node cluster locally:
 
 ```bash
-docker compose -f deployments/docker-compose.yaml up --build          # 3 nodes on ports 60000-60002
+docker compose -f deploy/docker-compose.yaml up --build          # 3 nodes on ports 60000-60002
 ```
 
 Run the cli client
