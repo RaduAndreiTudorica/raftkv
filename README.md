@@ -57,9 +57,11 @@ docker run -it --add-host=host.docker.internal:host-gateway raftkv-cli --addrs h
 ```
 
 
-Deploy on Kubernetes (kind/minikube):
+Deploy on Kubernetes (minikube):
 
 ```bash
+# 0. Start minikube
+minikube start
 # 1. Apply the configuration, headless service, statefulset, and client deployment
 kubectl apply -f deploy/k8s/
 
@@ -68,6 +70,12 @@ kubectl get pods -w
 
 # 3. Connect to the interactive CLI using the client pod running in the background
 kubectl exec -it deployment/raftkv-client -- /raftkv-cli --addrs raftkv-0.raftkv-service:50051,raftkv-1.raftkv-service:50051,raftkv-2.raftkv-service:50051
+
+# 5. Close the containers
+kubectl delete statefulset raftkv
+kubectl delete service raftkv-service
+kubectl delete configmap raftkv-config
+kubectl delete deployment raftkv-client
 
 ## Project structure
 
