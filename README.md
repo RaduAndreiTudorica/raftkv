@@ -3,8 +3,7 @@
 > A distributed, replicated key-value store built on the Raft consensus algorithm.
 > Written in Go. Deployed on Kubernetes.
 
-[![CI](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml/badge.svg)](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml)
-[![License: BSD-3](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
+[![CI](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RaduAndreiTudorica/raftkv/actions/workflows/ci.yml)[![License: BSD-3](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
 
 ---
 
