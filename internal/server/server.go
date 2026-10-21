@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io"
+	"log"
 	"sync"
 	"time"
 
@@ -15,6 +17,8 @@ import (
 	"github.com/RaduAndreiTudorica/raftkv/internal/store"
 	"github.com/RaduAndreiTudorica/raftkv/proto"
 )
+
+var ErrKeyNotFound = errors.New("value does not exist")
 
 type MapStore interface {
 	Get([]byte) ([]byte, error)
@@ -72,7 +76,7 @@ func (server *Server) applier() {
 				if err := pb.Unmarshal(wrapper.Payload, &req); err == nil {
 					err := server.Store.Delete(req.Key)
 					if err != nil {
-						return
+						log.Fatalf("applier: delete failed: %v", err)
 					}
 				}
 			}

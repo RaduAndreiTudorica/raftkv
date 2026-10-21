@@ -33,7 +33,7 @@ client-> │  node A  │ <-Raft-> │  node B  │
 
 ## Features
 
-- Strong consistency via Raft (leader election, log replication, snapshots)
+- Strong consistency via Raft (leader election, log replication)
 - gRPC / Protocol Buffers API: `Get`, `Put`, `Delete`
 - Write-Ahead Log for durability
 - Pluggable storage backend (in-memory map with WAL persistence)
