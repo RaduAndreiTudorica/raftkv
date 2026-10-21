@@ -235,14 +235,12 @@ func ping(nodes []string) string {
 			continue
 		}
 
-		if err == nil {
-			if reply.IsLeader {
-				return addr
-			}
+		if reply.IsLeader {
+			return addr
+		}
 
-			if reply.LeaderId >= 0 && int(reply.LeaderId) < len(nodes) {
-				return nodes[reply.LeaderId]
-			}
+		if reply.LeaderId >= 0 && int(reply.LeaderId) < len(nodes) {
+			return nodes[reply.LeaderId]
 		}
 	}
 

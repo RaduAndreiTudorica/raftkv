@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"io"
 	"os"
 	"sync"
 )
@@ -19,11 +18,6 @@ type Store struct {
 	mutex   sync.Mutex
 	walPath string
 	data    map[string][]byte
-}
-
-func (store *Store) Restore(io.Reader, error) {
-	// TODO implement me
-	panic("implement me")
 }
 
 func NewStore(walPath string) (*Store, error) {
